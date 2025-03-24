@@ -2,17 +2,23 @@ const express = require("express")
 
 const app = express();
 
-app.use("/tt",(req,res)=>{
-    res.send("iam from first")
+
+
+app.get("/user",(req,res)=>{
+    res.send("data fetched successfully")
 })
 
-app.use("/home",(req,res)=>{
-    res.send("iam from home")
+app.post("/user",(req,res)=>{
+    res.send("data saved to db")
 })
-app.use((req,res)=>{
-    res.send("iam from server")
+app.delete("/user",(req,res)=>{
+    res.send("data deleted from the db ")
 })
 
+
+app.use("/user",(req,res)=>{
+    res.send("hello hello")
+})
 
 app.listen(7777,()=>{
     console.log("server started successfully on port no 7777")
