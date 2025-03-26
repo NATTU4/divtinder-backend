@@ -1,62 +1,81 @@
 const express = require("express")
-
 const connectDB = require("./config/database")
 const app = express();
 const User = require("./models/user")
+const {validateSignUpData} = require("./utils/validation")
+const bcrypt = require("bcrypt")
+const cookieparser = require("cookie-parser")
+const {userAuth} = require("./middleware/auth")
 app.use(express.json())
+app.use(cookieparser())
 
-app.post("/singup",(req,res) => {
+app.post("/singup",async(req,res) => {
     
 
-
-    const user = new User(req.body)
     try{
-        user.save()
+        validateSignUpData(req);
+
+    const {firstName,lastName,emailId,password}=req.body;
+      const hashPassword = await bcrypt.hash(password, 10)
+    const user = new User({
+        firstName,
+        lastName,
+        emailId,
+        password:hashPassword
+    })
+   
+       await user.save()
        res.send("user added successfully!!")
     }catch (err){
-        res.status(400).send("Error saving to the user:"+err.message)
+        res.status(400).send("Error:" + err.message)
     }
   
 })
 
-app.get("/user", async(req,res) =>{
-    const userEmail = req.body.emailId;
+app.post("/login",async(req,res) =>{
     try{
-      const user = await User.findOne({emailId:userEmail})
-         res.send(user)
+        const {emailId,password}= req.body;
+        const user = await User.findOne({emailId:emailId})
+      
+        if(!user){
+           throw new Error("email not valid")
+        }
+   
+        const ispasswordValid = await bcrypt.compare(password,user.password);
+        
+        if(ispasswordValid){
+             
+              const token =  await user.JWT();
+
+            res.cookie("token",token)
+         res.send("login successfull")
+        }else{
+           throw new Error("password not valid")
+        }
     }catch (err){
-      res.status(400).send("smtg went wrong")
+        res.status(400).send("Error:" + err.message);
     }
-})
-app.get("/feed", async(req,res) =>{
-    try{
-      const user = await User.find({})
-         res.send(user)
-    }catch (err){
-      res.status(400).send("smtg went wrong")
-    }
+   
 })
 
-app.delete("/delete", async(req,res) =>{
-    const userId = req.body.userId;
-    try{
-      const user = await User.findByIdAndDelete(userId)
-      res.send("user deleted successfully")
-    }catch (err){
-      res.status(400).send("smtg went wrong")
-    }
-})
+app.post("/profile",userAuth,async (req,res) =>{
+     try{
+        const user = req.user;
+        res.send(user);
+        if(!user){
+            throw new Error("user doesn't exit")
+        }
 
-app.patch("/update", async(req,res) =>{
-    const userId = req.body.userId;
 
-    try{
-      await User.findByIdAndUpdate(userId,{lastName:"ching chong chuui"})
-      res.send("user updated successfully")
-    }catch (err){
-      res.status(400).send("smtg went wrong")
-    }
-})
+     }catch(err){
+              res.status(400).send("Error:"+err.message)
+     }
+
+ 
+
+    })
+
+
 connectDB()
    .then(()=>{
     console.log("database connected successfully");
